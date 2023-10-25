@@ -24,7 +24,7 @@ Beschreibung: Diese Software steuert den Suessigkeitenautomaten, welcher im Rahm
 
 
 // Globale Variablen
-const uint8_t Acceleration = 100;
+const uint8_t Acceleration = 700;
 const uint8_t SpeedLevel = 255;
 
 
@@ -47,7 +47,7 @@ enum class PusherPosition : bool {
 const uint8_t RandomSignalPin = 0;
 const uint8_t MotorPin = 4;
 const uint8_t LedPin = 8;
-const uint8_t SwitchPin = 10;
+const uint8_t SwitchPin = 18;
 
 
 // Konfiguration von RGB-LED
@@ -56,7 +56,7 @@ Adafruit_NeoPixel rgbLed = Adafruit_NeoPixel(NumberOfLeds, LedPin);
 
 
 // Konfiguration WiFi
-const char* Ssid = "Suessigkeitenautomat_Name";
+const char* Ssid = "Suessigkeiten-Automat_Name";
 const char* Password = "";
 
 
@@ -70,8 +70,9 @@ WebSocketsServer webSocket = WebSocketsServer(WebSocketPort);
 // Konfiguration vom Payload
 const uint8_t MaxJsonDocumentSize = 250;
 StaticJsonDocument<MaxJsonDocumentSize> jsonDocument;
-String webpage = "<p> &nbsp;</p><h1>Lisa's Suessigkeitenautomat</h1><table> <thead> <tr> <td> </td> </tr> </thead> <tbody> <tr> <td style='text-align: center;'> <p><strong><span id='sum1'>-</span></strong></p> </td> <td style='text-align: center;'> <p><strong>+</strong></p> </td> <td style='text-align: center;'> <p><strong><span id='sum2'>-</span></strong></p> </td> <td style='text-align: center;'> <p><strong>=</strong></p> </td> <td> <td><input type='number' name='lsgAdd' id='lsgAdd' max='9999' min='-9999' step='1'></td> </td> </tr> </tbody></table><p><button id='BTN_CHECK' type='button'>Check result </button></p><p><button id='BTN_SEND_BACK' type='button' hidden>Continue </button></p><script> var Socket; var obj; var CorrectAnswers; document.getElementById('BTN_CHECK').addEventListener('click', button_check_result); document.getElementById('BTN_SEND_BACK').addEventListener('click', button_send_back); function init() { Socket = new WebSocket('ws://' + window.location.hostname + ':81/'); Socket.onmessage = function(event) { processCommand(event); }; } function button_check_result() { CorrectAnswers = 0; document.getElementById('lsgAdd').setAttribute('disabled', ''); if (document.getElementById('lsgAdd').value == obj.LSGadd) { CorrectAnswers += 1; document.getElementById('lsgAdd').style.color = 'green'; } else { document.getElementById('lsgAdd').style.color = 'red'; } document.getElementById('BTN_CHECK').setAttribute('hidden', 'hidden'); document.getElementById('BTN_SEND_BACK').removeAttribute('hidden'); console.log(CorrectAnswers); var loesungen = { count: CorrectAnswers, }; console.log(JSON.stringify(loesungen)); Socket.send(JSON.stringify(loesungen)); } function button_send_back() { ResetCounter = 0; document.getElementById('lsgAdd').value = ''; document.getElementById('lsgAdd').style.color = 'black'; document.getElementById('BTN_CHECK').removeAttribute('hidden'); document.getElementById('BTN_SEND_BACK').setAttribute('hidden', 'hidden'); } function processCommand(event) { obj = JSON.parse(event.data); document.getElementById('sum1').innerHTML = obj.sum1; document.getElementById('sum2').innerHTML = obj.sum2; document.getElementById('lsgAdd').removeAttribute('disabled', ''); console.log(obj.sum1); console.log(obj.sum2); } window.onload = function(event) { init(); }</script></html>";
+String webpage = "<html><img src=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOUAAAA+CAIAAABbUkutAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAASdEVYdFNvZnR3YXJlAEdyZWVuc2hvdF5VCAUAAAaRSURBVHhe7Zy/i11FFMfzH/gX6F9g/gLTK6Y0jWm0jKC1sdLCH42FIlmwULYwhCxo4yZNCnGDQhp30yQQWBAJNluIQkBs1i97zpvMfM/M3Ln33d335u35cFjCPefOmzfzuXN/vKsXjh2nH9xXpyfcV6cn3FenJ9xXpyfcV6cn3FenJ9xXpyfcV6cn3FenJ9xXpyfc1/PFwydHl9/7IQ5NdMJsvl74/Gj20KYbeOHSV3Hs/fZUE2cO9SSEpiOo4NNvHmhiJNiRmpLINoiRoTJNdIL7OjPUkxCajqAC97UF93VmqCchNB1BBe5rC+7rzFBPQmg6ggrc1xbc11OhRQsqmOxroKXB3//8G9vj0EQnuK+nwtr62jub7+vDJ0e7e4efffvg5t3H9/dHe4wFCTtid4mtnQM0qLkyy/sauo1PRLf/+udfTZSpN7g86AN6IqOBvy3jQIQWZC4wtppoZpN9/fHnw4tXtin10mtfwwDZqw4aufT2LdpdAs1izrQuxzK+Yi5ttxFXP7hTn2Cqj321j11DaEWEzcKz61/uYejoI0YNJvpPuyPwEZgmqSl1UrLCxvr63Z1HtDGOdz65p3vmwPRgmGgXG7C5tMZM87Xlc/G9dH8DVca+2v6E0IoIyqJXpeNWYnAws6bGIS2UOintCJvp643b+7TFRul0OTg9cWCBySo7zdeWgwTx/hd72kQKlc3la0uvlh9MKHt+fbVnLhuo0Z1TSovBi6/m28R8YFZ05wUTfG3pc4hwDo2hmll8rewYBzpvBwEMrqxx4DikLRLa1gmb6avEK2/dwpzhBIq/+DdlEXbWsYVqsGNchivIN6/vUo1dXSb4GuLax/fwiTL9WLzRuD1UcIErjcRQTdwrtIYuIeyZRysi4iw6I/94+Y1tNIiO4e/r734fCkLYC5Ws69g3jCd6hb2yU4OQDiOkWNhYX+1JMwx9pYZudDC42WWDVgK7utip0kQEFSDgJU2PAGutstYPKrBHERjbMVn1MXSaW4DG4zIEDmPNLbAXEjhaNBeBobNTg9B0ymb6Cs80EYFxwSJRKYMWcRaKZGUVqKl4DQbTfKVGYmyD1g8qmMVXBNY/TaTQKktLPk5EcRZhOxywU4PQXMpm+lqaeFoXyVdaM+zqG0NN0Qo0oxYBug6x199xFjGXr9l2gF1iNXGCvfAoPUsRcLqgek2kbKavpaGpDzEtGLhXkN8IsoH72biY1J9Ri4CdUXocS9m5fMUumkipN0VDPXg00skNoYmUzfRVtxpG+Toqlve1cjEg2DbJJMqu1le6JKXxyRLXI3Rrivv6nGV8RWgrJ8yoRcC2SbtQdrW+0mC6rwktXxW4rzN2rN4UDfWgr/b+TBMpA75+9OuzbPz0x39asYBUmyW06QZavioY5evgCbrCBC3s8ynCXr/SZTpl18pXe3dIYLTjeoQmUgZ8JYFCfPjLM61YQAWzhDbdQMtXBXVfKVt/PlBnghb2GSdhf6fQxALKrtZX61/9+LePYDWR4r4+hyag9BujgOL4cQFNan0uBSpAVF6/srfP9gxLBav1FUNH2YtXtkvjaZtCaC7FfU2gp9alN48w7vRLGJ2ap/mafRUBYKN9a+Rsft9CTPMV2CUT38Iek1h35Vc0Ck2nuK8J9hrxqnnrFGqSPbBccwvGahGOE8zczbuPY2uzr8PaTwRUs3JfbYGEPNje2jnAX3schtBWUtxXJvuUAMN6+eTdYasOwl6ZjdXCdgyfWJnL7LUg1azcV0C/AlbCDrs2keK+MlhNS28MZSN7nzRWC9S3T23pzozK1sFXYK8KbMirGrRR909xXzNg7BqVLakzwVdsaZnaylMLqlwTX0H9UMRQyxUXbZd9Cfe1yI3b+/YtvhAY5dJEgrFahKbwofZNJQmcMSufCKh+fXwFMBJHI301jGG4a0RBnELIdmLAVwd3V5h4jDV0QWCpgFJ0BzY7UCF8KP7iE+n5Q7/g3IVvZ78Ovc8FlTWR4r46qwcS040sjlLNpbivzorByco+CSn9Ou2+OqeO/AS4u3d4f/9pHFs7B9n/IDH7dFlwX51Th3QcjNIdHhjwlV7LCmHfz6KCELbSOW+QjvUoXQkIA77SA6YQ7c+zbKVz3iAjS4HLgMrKKrivzqlDXlJA02sn/8sFra7ivjpnBNZOG5prxn11esJ9dXrCfXV6wn11esJ9dXpiwFfHWSvcV6cn3FenJ9xXpyfcV6cn3FenJ9xXpyfcV6cfjo//BwvbGSrmlTwhAAAAAElFTkSuQmCC /><p> &nbsp;</p><h1>Lisa's Suessigkeitenautomat</h1><table> <thead> <tr> <td> </td> </tr> </thead> <tbody> <tr> <td style='text-align: center;'> <p><strong><span id='sum1'>-</span></strong></p> </td> <td style='text-align: center;'> <p><strong>+</strong></p> </td> <td style='text-align: center;'> <p><strong><span id='sum2'>-</span></strong></p> </td> <td style='text-align: center;'> <p><strong>=</strong></p> </td> <td> <td><input type='number' name='lsgAdd' id='lsgAdd' max='9999' min='-9999' step='1'></td> </td> </tr> </tbody></table><p><button id='BTN_CHECK' type='button'>Check result </button></p><p><button id='BTN_SEND_BACK' type='button' hidden>Continue </button></p><script> var Socket; var obj; var CorrectAnswers; document.getElementById('BTN_CHECK').addEventListener('click', button_check_result); document.getElementById('BTN_SEND_BACK').addEventListener('click', button_send_back); function init() { Socket = new WebSocket('ws://' + window.location.hostname + ':81/'); Socket.onmessage = function(event) { processCommand(event); }; } function button_check_result() { CorrectAnswers = 0; document.getElementById('lsgAdd').setAttribute('disabled', ''); if (document.getElementById('lsgAdd').value == obj.LSGadd) { CorrectAnswers += 1; document.getElementById('lsgAdd').style.color = 'green'; } else { document.getElementById('lsgAdd').style.color = 'red'; } document.getElementById('BTN_CHECK').setAttribute('hidden', 'hidden'); document.getElementById('BTN_SEND_BACK').removeAttribute('hidden'); console.log(CorrectAnswers); var loesungen = { count: CorrectAnswers, }; console.log(JSON.stringify(loesungen)); Socket.send(JSON.stringify(loesungen)); } function button_send_back() { ResetCounter = 0; document.getElementById('lsgAdd').value = ''; document.getElementById('lsgAdd').style.color = 'black'; document.getElementById('BTN_CHECK').removeAttribute('hidden'); document.getElementById('BTN_SEND_BACK').setAttribute('hidden', 'hidden'); } function processCommand(event) { obj = JSON.parse(event.data); document.getElementById('sum1').innerHTML = obj.sum1; document.getElementById('sum2').innerHTML = obj.sum2; document.getElementById('lsgAdd').removeAttribute('disabled', ''); console.log(obj.sum1); console.log(obj.sum2); } window.onload = function(event) { init(); }</script></html>";
 
+ 
 
 void setup() {
   initEsp();
@@ -92,7 +93,7 @@ void initEsp() {
   randomSeed(analogRead(RandomSignalPin));
 
   pinMode(MotorPin, OUTPUT);
-  pinMode(SwitchPin, INPUT_PULLDOWN);
+  pinMode(SwitchPin, INPUT_PULLUP);
 
   rgbLed.begin();
 }
@@ -249,8 +250,8 @@ PusherPosition getPusherPosition() {
   } while (oldState != newState);
 
   if (newState) {
-    return PusherPosition::DISPENSING_POSITION;
-  } else {
     return PusherPosition::COLLECTING_POSITION;
+  } else {
+    return PusherPosition::DISPENSING_POSITION;
   }
 }
