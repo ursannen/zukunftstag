@@ -87,8 +87,7 @@ WebSocketsServer webSocket = WebSocketsServer(WebSocketPort);
 // Konfiguration vom Payload
 const uint8_t MaxJsonDocumentSize = 250;
 StaticJsonDocument<MaxJsonDocumentSize> jsonDocument;
-String webpage = "<!DOCTYPE html><html style='text-align:center'><img src=data:image/png;base64,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 /><h3>Gutes gegen Richtiges</h3><p> <button id='EASY_BUTTON' type='button' class='button EASY_BUTTON'>leicht </button> <button id='MEDIUM_BUTTON' type='button' class='button MEDIUM_BUTTON'>mittel </button> <button id='HARD_BUTTON' type='button' class='button HARD_BUTTON'>schwierig </button></p><p> <strong><span id='number1'>-</span></strong> <strong><span id='operand'>-</span></strong> <strong><span id='number2'>-</span></strong> <strong>=</strong></p><p><input type='number' name='solution' id='solution' max='9999' min='0' step='1'></p><p><button id='BTN_CHECK' type='button'>Check result </button></p><p><button id='BTN_SEND_BACK' type='button' hidden>Continue </button></p><style> .button { border: none; color: white; padding: 10px 10px; width: 100px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; margin: 4px 2px; cursor: pointer; border-radius: 2px; } .EASY_BUTTON { background-color: #4CAF50; } .MEDIUM_BUTTON { background-color: #FFA500; } .HARD_BUTTON { background-color: #C71585; }</style><script> var Socket; var obj; var CorrectAnswers; document.getElementById('BTN_CHECK').addEventListener('click', button_check_result); document.getElementById('BTN_SEND_BACK').addEventListener('click', button_send_back); function init() { Socket = new WebSocket('ws://' + window.location.hostname + ':81/'); Socket.onmessage = function(event) { processCommand(event); }; } function button_check_result() { CorrectAnswers = 0; document.getElementById('solution').setAttribute('disabled', ''); if (document.getElementById('solution').value == obj.solution) { CorrectAnswers += 1; document.getElementById('solution').style.color = 'green'; } else { document.getElementById('solution').style.color = 'red'; } document.getElementById('BTN_CHECK').setAttribute('hidden', 'hidden'); document.getElementById('BTN_SEND_BACK').removeAttribute('hidden'); console.log(CorrectAnswers); var loesungen = { count: CorrectAnswers, }; console.log(JSON.stringify(loesungen)); Socket.send(JSON.stringify(loesungen)); } function button_send_back() { ResetCounter = 0; document.getElementById('solution').value = ''; document.getElementById('solution').style.color = 'black'; document.getElementById('BTN_CHECK').removeAttribute('hidden'); document.getElementById('BTN_SEND_BACK').setAttribute('hidden', 'hidden'); } function processCommand(event) { obj = JSON.parse(event.data); document.getElementById('number1').innerHTML = obj.number1; document.getElementById('number2').innerHTML = obj.number2; document.getElementById('operand').innerHTML = obj.operand; document.getElementById('solution').removeAttribute('disabled', ''); console.log(obj.number1); console.log(obj.number2); } window.onload = function(event) { init(); }</script></html>";
-
+String webpage = "<!DOCTYPE html><html style='text-align: center;'><head> <title>Zukunftstag Helbling 2023</title> <style> body { font-family: Corbel; min-height: 100vh; margin: 0; } .LARGE_FONT { font-size: 40px; font-family: Corbel; } .CUSTOM_BUTTON { border: none; color: white; padding: 15px 15px; width: 15%; text-align: center; text-decoration: none; font-family: Corbel; display: inline-block; font-size: 16px; margin: 0px 0px; cursor: pointer; border-radius: 8px; } .USER_BUTTON { background-color: #009900; width: 20%; padding: 30px 20px; font-size: 40px; } .CUSTOM_INPUT { border-radius: 8px; border: 5px solid lightgray; width: 45%; font-size: 40px; font-family: Corbel; text-align: center; } </style></head><br><br><br><body> <img src=data:image/png;base64,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 /> <h3>Viel Spass!</h3> <p> <button id='easyButtonId' type='button' class='CUSTOM_BUTTON EASY_BUTTON'>leicht</button> <button id='mediumButtonId' type='button' class='CUSTOM_BUTTON MEDIUM_BUTTON'>mittel</button> <button id='hardButtonId' type='button' class='CUSTOM_BUTTON HARD_BUTTON'>schwierig</button> </p> <p class='LARGE_FONT'> <strong> <span id='number1Id'>-</span> <span id='operandId'>-</span> <span id='number2Id'>-</span> = </strong> </p> <p> <input id='solutionInputId' type='number' class='CUSTOM_INPUT' max='9999' min='0' step='1' /> <br/> <br/> <button id='userButtonId' type='button' class='CUSTOM_BUTTON USER_BUTTON'> <span id='userButtonContent'></span> </button> </p> <script> var Socket; var obj; var state = 'INIT'; var difficultyLevel; document.getElementById('userButtonId').addEventListener('click', processStateMachine); document.getElementById('easyButtonId').addEventListener('click', setEasyDifficulty); document.getElementById('mediumButtonId').addEventListener('click', setMediumDifficulty); document.getElementById('hardButtonId').addEventListener('click', setHardDifficulty); window.onload = function(event) { init(); }; function init() { Socket = new WebSocket('ws://' + window.location.hostname + ':81/'); Socket.onopen = function(event) { processStateMachine(); }; Socket.onmessage = function(event) { processMessage(event); }; } function processStateMachine() { if (state == 'INIT') { setEasyDifficulty(); getNewExcercise(); state = 'READY_FOR_SOLUTION' } else if (state == 'READY_FOR_NEW_EXERCISE') { getNewExcercise(); state = 'READY_FOR_SOLUTION' } else if (state == 'READY_FOR_SOLUTION') { checkResult(); showNewExerciseButton(); state = 'READY_FOR_NEW_EXERCISE' } } function getNewExcercise() { document.getElementById('userButtonId').innerHTML = '&#10148'; document.getElementById('solutionInputId').value = ''; document.getElementById('solutionInputId').style.color = 'black'; sendData('getNewExcercise', difficultyLevel); } function processMessage(event) { obj = JSON.parse(event.data); document.getElementById('number1Id').innerHTML = obj.number1; document.getElementById('number2Id').innerHTML = obj.number2; document.getElementById('operandId').innerHTML = obj.operand; document.getElementById('solutionInputId').removeAttribute('disabled', ''); console.log(obj.number1); console.log(obj.operand); console.log(obj.number2); } function checkResult() { document.getElementById('solutionInputId').setAttribute('disabled', ''); if (document.getElementById('solutionInputId').value == obj.solution) { sendData('result', 'correct'); document.getElementById('solutionInputId').style.color = 'green'; } else { sendData('result', 'wrong'); document.getElementById('solutionInputId').style.color = 'red'; } } function showNewExerciseButton() { document.getElementById('userButtonId').innerHTML = '&#x21bb'; } function sendData(key, value) { console.log(key); console.log(value); var message = { key: key, value: value }; Socket.send(JSON.stringify(message)); } function setEasyDifficulty() { difficultyLevel = 'easy'; document.getElementById('easyButtonId').style.background = '#0073e6'; document.getElementById('mediumButtonId').style.background = '#99ccff'; document.getElementById('hardButtonId').style.background = '#99ccff'; } function setMediumDifficulty() { difficultyLevel = 'medium'; document.getElementById('easyButtonId').style.background = '#99ccff'; document.getElementById('mediumButtonId').style.background = '#0073e6'; document.getElementById('hardButtonId').style.background = '#99ccff'; } function setHardDifficulty() { difficultyLevel = 'hard'; document.getElementById('easyButtonId').style.background = '#99ccff'; document.getElementById('mediumButtonId').style.background = '#99ccff'; document.getElementById('hardButtonId').style.background = '#0073e6'; } </script></body></html>";
 
 
 void setup() {
@@ -159,7 +158,6 @@ void webSocketEvent(byte num, WStype_t type, uint8_t* payload, size_t length) {
   switch (type) {
     case WStype_CONNECTED:
       Serial.println("Client " + String(num) + " connected");
-      updateWebContent();
       break;
     case WStype_DISCONNECTED:
       Serial.println("Client " + String(num) + " disconnected");
@@ -168,7 +166,6 @@ void webSocketEvent(byte num, WStype_t type, uint8_t* payload, size_t length) {
       Serial.println("Client " + String(num) + " received text");
       if (readWebContent(payload)) {
         processWebContent();
-        updateWebContent();
       }
       break;
   }
@@ -207,13 +204,13 @@ void createWebContent() {
     case 2:
       operand = "*";
       number1 = random(2 * numberLeverage[difficultyLevel], 10 * numberLeverage[difficultyLevel]);
-      number2 = random(2, 13);
+      number2 = random(1 + numberLeverage[difficultyLevel], 13);
       solution = number1 * number2;
       break;
     case 3:
       operand = "/";
       solution = random(2 * numberLeverage[difficultyLevel], 10 * numberLeverage[difficultyLevel]);
-      number2 = random(2, 13);
+      number2 = random(1 + numberLeverage[difficultyLevel], 13);
       number1 = solution * number2;
       break;
   }
@@ -243,16 +240,42 @@ bool readWebContent(const uint8_t* payload) {
 
 
 void processWebContent() {
-  const int correctResults = jsonDocument["count"];
-  if (correctResults > 0) {
+  String key = jsonDocument["key"];
+  String value = jsonDocument["value"];
+  if(key == "result")
+  {
+      processResult(value);
+  }
+  if(key == "getNewExcercise")
+  {
+      processDifficulty(value);
+      updateWebContent();
+  }
+}
+
+void processResult(String result)
+{
+  if (result  == "correct") {
     setColor(LedColor::GREEN);
-    dispenseCandy(correctResults);
+    dispenseCandy(1);
   } else {
     setColor(LedColor::RED);
     delay(2000);
   }
 }
 
+void processDifficulty(String value)
+{
+  if(value == "easy"){
+    difficultyLevel = DifficultyLevel::EASY;
+  }   
+  if(value == "medium"){
+    difficultyLevel = DifficultyLevel::MEDIUM;
+  } 
+  if(value == "hard"){
+    difficultyLevel = DifficultyLevel::HARD;
+  } 
+}
 
 void dispenseCandy(uint8_t quantity) {
   Serial.println("dispenseCandy");
