@@ -47,20 +47,30 @@ enum class DifficultyLevel {
   HARD
 };
 
+struct Range {
+  uint16_t min;
+  uint16_t max;
+};
 
 // Konfiguration der Aufgabe
 DifficultyLevel difficultyLevel = DifficultyLevel::EASY;
-std::map<DifficultyLevel, int16_t> numberLeverage{
-  { DifficultyLevel::EASY, 1 },
-  { DifficultyLevel::MEDIUM, 2 },
-  { DifficultyLevel::HARD, 4 }
+std::map<DifficultyLevel, Range> rangeAddition{
+  { DifficultyLevel::EASY, { 5, 25 } },
+  { DifficultyLevel::MEDIUM, { 50, 100 } },
+  { DifficultyLevel::HARD, { 100, 500 } }
+};
+
+std::map<DifficultyLevel, Range> rangeMultiplication{
+  { DifficultyLevel::EASY, { 5, 11 } },
+  { DifficultyLevel::MEDIUM, { 10, 16 } },
+  { DifficultyLevel::HARD, { 13, 21 } }
 };
 
 
 // Konfiguration des Antriebs
 const uint16_t Acceleration_BitsPerSecond = 5000;
 const uint8_t SpeedLevel = 255;
-const uint8_t MaxRuntime_s = 60;
+const uint8_t MaxRuntimePerSingleDispense_s = 20;
 
 
 // Konfiguration der Pins
@@ -77,7 +87,7 @@ Adafruit_NeoPixel rgbLed = Adafruit_NeoPixel(NumberOfLeds, LedPin);
 
 
 // Konfiguration WiFi
-const char* Ssid = "Suessigkeiten-Automat_Name";
+const char* Ssid = "Suessigkeitenautomat_Cafeteria";
 const char* Password = "";
 
 
@@ -101,14 +111,9 @@ void setup() {
 }
 
 
-void loop() {
-  //server.handleClient();
-  if (Serial.available() > 0) {
-    int count = Serial.parseInt();
-    if (count > 0)
-      dispenseCandy(count);
-  }
-  //webSocket.loop();
+void loop() { 
+  server.handleClient();
+  webSocket.loop();
 }
 
 
@@ -195,14 +200,14 @@ void createWebContent() {
   switch (random(0, 4)) {
     case 0:
       operand = "+";
-      number1 = random(20, 50 * numberLeverage[difficultyLevel]);
-      number2 = random(10, 50 * numberLeverage[difficultyLevel]);
+      number1 = random(rangeAddition[difficultyLevel].min, rangeAddition[difficultyLevel].max);
+      number2 = random(rangeAddition[difficultyLevel].min, rangeAddition[difficultyLevel].max);
       solution = number1 + number2;
       break;
     case 1:
       operand = "-";
-      number1 = random(20, 50 * numberLeverage[difficultyLevel]);
-      number2 = random(10, 50 * numberLeverage[difficultyLevel]);
+      number1 = random(rangeAddition[difficultyLevel].min, rangeAddition[difficultyLevel].max);
+      number2 = random(rangeAddition[difficultyLevel].min, rangeAddition[difficultyLevel].max);
       if (number1 < number2) {
         int16_t temp = number1;
         number1 = number2;
@@ -212,14 +217,14 @@ void createWebContent() {
       break;
     case 2:
       operand = "*";
-      number1 = random(2 * numberLeverage[difficultyLevel], 10 * numberLeverage[difficultyLevel]);
-      number2 = random(1 + numberLeverage[difficultyLevel], 13);
+      number1 = random(rangeMultiplication[difficultyLevel].min, rangeMultiplication[difficultyLevel].max);
+      number2 = random(rangeMultiplication[difficultyLevel].min, rangeMultiplication[difficultyLevel].max);
       solution = number1 * number2;
       break;
     case 3:
       operand = "/";
-      solution = random(2 * numberLeverage[difficultyLevel], 10 * numberLeverage[difficultyLevel]);
-      number2 = random(1 + numberLeverage[difficultyLevel], 13);
+      solution = random(rangeMultiplication[difficultyLevel].min, rangeMultiplication[difficultyLevel].max);
+      number2 = random(rangeMultiplication[difficultyLevel].min, rangeMultiplication[difficultyLevel].max);
       number1 = solution * number2;
       break;
   }
@@ -292,21 +297,13 @@ void dispenseCandy(uint8_t quantity) {
     waitUntilCandyIsDispensed();
   }
   stopMotor();
-  Serial.println();
 }
 
 void waitUntilCandyIsDispensed() {
   unsigned long startTime = millis();
-  unsigned long MaxRuntime_ms = 1000 * static_cast<unsigned long>(MaxRuntime_s);
-  Serial.println("go to center");
+  unsigned long MaxRuntime_ms = 1000 * static_cast<unsigned long>(MaxRuntimePerSingleDispense_s);
   while (millis() - startTime < MaxRuntime_ms && getPusherPosition() != PusherPosition::CENTER) {};
-  Serial.println("go to left or right position");
   while (millis() - startTime < MaxRuntime_ms && getPusherPosition() == PusherPosition::CENTER) {};
-  // Serial.println("go to center");
-  // while (millis() - startTime < MaxRuntime_ms && getPusherPosition() != PusherPosition::CENTER) {};
-  // PusherPosition currentPusherPosition = getPusherPosition();
-  // Serial.println("!= currentPusherPosition");
-  // while (millis() - startTime < MaxRuntime_ms && getPusherPosition() != currentPusherPosition) {};
 }
 
 void startMotor() {
