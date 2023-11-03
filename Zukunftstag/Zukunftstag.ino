@@ -22,6 +22,7 @@ Beschreibung: Diese Software steuert den Suessigkeitenautomaten, welcher im Rahm
 #include <WebSocketsServer.h>  // by Markus Sattler - search for "Arduino Websockets"
 #include <ArduinoJson.h>       // by Benoit Blanchon
 #include <map>
+#include <string.h>
 
 // Typen-Definition
 enum class LedColor {
@@ -33,9 +34,10 @@ enum class LedColor {
 };
 
 
-enum class PusherPosition : bool {
-  COLLECTING_POSITION = 0,
-  DISPENSING_POSITION = 1
+enum class PusherPosition {
+  LEFT,
+  CENTER,
+  RIGHT
 };
 
 
@@ -56,15 +58,17 @@ std::map<DifficultyLevel, int16_t> numberLeverage{
 
 
 // Konfiguration des Antriebs
-const uint8_t Acceleration = 700;
+const uint16_t Acceleration_BitsPerSecond = 5000;
 const uint8_t SpeedLevel = 255;
+const uint8_t MaxRuntime_s = 60;
 
 
 // Konfiguration der Pins
 const uint8_t RandomSignalPin = 0;
 const uint8_t MotorPin = 4;
 const uint8_t LedPin = 8;
-const uint8_t SwitchPin = 18;
+const uint8_t SwitchRightPin = 18;
+const uint8_t SwitchLeftPin = 19;
 
 
 // Konfiguration von RGB-LED
@@ -98,8 +102,13 @@ void setup() {
 
 
 void loop() {
-  server.handleClient();
-  webSocket.loop();
+  //server.handleClient();
+  if (Serial.available() > 0) {
+    int count = Serial.parseInt();
+    if (count > 0)
+      dispenseCandy(count);
+  }
+  //webSocket.loop();
 }
 
 
@@ -109,7 +118,8 @@ void initEsp() {
   randomSeed(analogRead(RandomSignalPin));
 
   pinMode(MotorPin, OUTPUT);
-  pinMode(SwitchPin, INPUT_PULLUP);
+  pinMode(SwitchRightPin, INPUT_PULLUP);
+  pinMode(SwitchLeftPin, INPUT_PULLUP);
 
   rgbLed.begin();
 }
@@ -180,21 +190,20 @@ void updateWebContent() {
 
 
 void createWebContent() {
-  String operand; 
+  String operand;
   int16_t number1, number2, solution;
   switch (random(0, 4)) {
     case 0:
       operand = "+";
-      number1 = random(10, 50 * numberLeverage[difficultyLevel]);
+      number1 = random(20, 50 * numberLeverage[difficultyLevel]);
       number2 = random(10, 50 * numberLeverage[difficultyLevel]);
       solution = number1 + number2;
       break;
     case 1:
       operand = "-";
-      number1 = random(10, 50 * numberLeverage[difficultyLevel]);
+      number1 = random(20, 50 * numberLeverage[difficultyLevel]);
       number2 = random(10, 50 * numberLeverage[difficultyLevel]);
-      if(number1 < number2)
-      {
+      if (number1 < number2) {
         int16_t temp = number1;
         number1 = number2;
         number2 = temp;
@@ -242,20 +251,18 @@ bool readWebContent(const uint8_t* payload) {
 void processWebContent() {
   String key = jsonDocument["key"];
   String value = jsonDocument["value"];
-  if(key == "result")
-  {
-      processResult(value);
+  if (key == "result") {
+    processResult(value);
   }
-  if(key == "getNewExcercise")
-  {
-      processDifficulty(value);
-      updateWebContent();
+  if (key == "getNewExcercise") {
+    processDifficulty(value);
+    updateWebContent();
   }
 }
 
-void processResult(String result)
-{
-  if (result  == "correct") {
+
+void processResult(String result) {
+  if (result == "correct") {
     setColor(LedColor::GREEN);
     dispenseCandy(1);
   } else {
@@ -264,29 +271,43 @@ void processResult(String result)
   }
 }
 
-void processDifficulty(String value)
-{
-  if(value == "easy"){
-    difficultyLevel = DifficultyLevel::EASY;
-  }   
-  if(value == "medium"){
-    difficultyLevel = DifficultyLevel::MEDIUM;
-  } 
-  if(value == "hard"){
-    difficultyLevel = DifficultyLevel::HARD;
-  } 
-}
 
-void dispenseCandy(uint8_t quantity) {
-  Serial.println("dispenseCandy");
-  for (uint8_t q = 0; q < quantity; q++) {
-    startMotor();
-    while (getPusherPosition() != PusherPosition::DISPENSING_POSITION) {};
-    while (getPusherPosition() != PusherPosition::COLLECTING_POSITION) {};
-    stopMotor();
+void processDifficulty(String value) {
+  if (value == "easy") {
+    difficultyLevel = DifficultyLevel::EASY;
+  }
+  if (value == "medium") {
+    difficultyLevel = DifficultyLevel::MEDIUM;
+  }
+  if (value == "hard") {
+    difficultyLevel = DifficultyLevel::HARD;
   }
 }
 
+
+void dispenseCandy(uint8_t quantity) {
+  Serial.println("dispenseCandy");
+  startMotor();
+  for (uint8_t q = 0; q < quantity; q++) {
+    waitUntilCandyIsDispensed();
+  }
+  stopMotor();
+  Serial.println();
+}
+
+void waitUntilCandyIsDispensed() {
+  unsigned long startTime = millis();
+  unsigned long MaxRuntime_ms = 1000 * static_cast<unsigned long>(MaxRuntime_s);
+  Serial.println("go to center");
+  while (millis() - startTime < MaxRuntime_ms && getPusherPosition() != PusherPosition::CENTER) {};
+  Serial.println("go to left or right position");
+  while (millis() - startTime < MaxRuntime_ms && getPusherPosition() == PusherPosition::CENTER) {};
+  // Serial.println("go to center");
+  // while (millis() - startTime < MaxRuntime_ms && getPusherPosition() != PusherPosition::CENTER) {};
+  // PusherPosition currentPusherPosition = getPusherPosition();
+  // Serial.println("!= currentPusherPosition");
+  // while (millis() - startTime < MaxRuntime_ms && getPusherPosition() != currentPusherPosition) {};
+}
 
 void startMotor() {
   Serial.println("startMotor");
@@ -294,7 +315,7 @@ void startMotor() {
   while (currentSpeed < SpeedLevel) {
     currentSpeed++;
     analogWrite(MotorPin, currentSpeed);
-    delay(1000 / Acceleration);
+    delayMicroseconds(1000000 / Acceleration_BitsPerSecond);
   }
 }
 
@@ -305,25 +326,30 @@ void stopMotor() {
   while (currentSpeed > 0) {
     currentSpeed--;
     analogWrite(MotorPin, currentSpeed);
-    delay(1000 / Acceleration);
+    delayMicroseconds(1000000 / Acceleration_BitsPerSecond);
   }
 }
 
 
 PusherPosition getPusherPosition() {
-  const uint8_t DebouncingTime_ms = 100;
+  if (getDebouncedPinState(SwitchLeftPin) == 0) {
+    return PusherPosition::LEFT;
+  } else if (getDebouncedPinState(SwitchRightPin) == 0) {
+    return PusherPosition::RIGHT;
+  } else {
+    return PusherPosition::CENTER;
+  }
+}
+
+
+bool getDebouncedPinState(const uint8_t pin) {
+  const uint8_t DebouncingTime_ms = 10;
   bool oldState;
   bool newState;
-
   do {
-    oldState = digitalRead(SwitchPin);
+    oldState = digitalRead(pin);
     delay(DebouncingTime_ms);
-    newState = digitalRead(SwitchPin);
+    newState = digitalRead(pin);
   } while (oldState != newState);
-
-  if (newState) {
-    return PusherPosition::COLLECTING_POSITION;
-  } else {
-    return PusherPosition::DISPENSING_POSITION;
-  }
+  return newState;
 }
