@@ -57,13 +57,25 @@ DifficultyLevel difficultyLevel = DifficultyLevel::EASY;
 std::map<DifficultyLevel, Range> rangeAddition{
   { DifficultyLevel::EASY, { 5, 25 } },
   { DifficultyLevel::MEDIUM, { 50, 100 } },
-  { DifficultyLevel::HARD, { 100, 500 } }
+  { DifficultyLevel::HARD, { 100, 300 } }
 };
 
-std::map<DifficultyLevel, Range> rangeMultiplication{
+std::map<DifficultyLevel, Range> rangeMultiplicationNumber1{
+  { DifficultyLevel::EASY, { 2, 11 } },
+  { DifficultyLevel::MEDIUM, { 5, 11 } },
+  { DifficultyLevel::HARD, { 7, 13 } }
+};
+
+std::map<DifficultyLevel, Range> rangeMultiplicationNumber2{
   { DifficultyLevel::EASY, { 5, 11 } },
-  { DifficultyLevel::MEDIUM, { 10, 16 } },
+  { DifficultyLevel::MEDIUM, { 11, 20 } },
   { DifficultyLevel::HARD, { 13, 21 } }
+};
+
+std::map<DifficultyLevel, uint8_t> numberCandyPerDifficultyLevel{
+  { DifficultyLevel::EASY, 1 },
+  { DifficultyLevel::MEDIUM, 2 },
+  { DifficultyLevel::HARD, 3 }
 };
 
 
@@ -89,6 +101,8 @@ Adafruit_NeoPixel rgbLed = Adafruit_NeoPixel(NumberOfLeds, LedPin);
 // Konfiguration WiFi
 const char* Ssid = "Suessigkeitenautomat_Cafeteria";
 const char* Password = "";
+const bool IsSsidHidden = false;
+const uint8_t MaxConnections = 2;
 
 
 // Konfiguration von Webserver und Websocket
@@ -98,20 +112,20 @@ WebServer server(WebServerPort);
 WebSocketsServer webSocket = WebSocketsServer(WebSocketPort);
 
 
-// Konfiguration vom Payload
+// Konfiguration der Website
 const uint8_t MaxJsonDocumentSize = 250;
 StaticJsonDocument<MaxJsonDocumentSize> jsonDocument;
-String webpage = "<!DOCTYPE html><html style='text-align: center;'><head> <title>Zukunftstag Helbling 2023</title> <style> body { font-family: Corbel; min-height: 100vh; margin: 0; } .LARGE_FONT { font-size: 40px; font-family: Corbel; } .CUSTOM_BUTTON { border: none; color: white; padding: 15px 15px; width: 15%; text-align: center; text-decoration: none; font-family: Corbel; display: inline-block; font-size: 16px; margin: 0px 0px; cursor: pointer; border-radius: 8px; } .USER_BUTTON { background-color: #009900; width: 20%; padding: 30px 20px; font-size: 40px; } .CUSTOM_INPUT { border-radius: 8px; border: 5px solid lightgray; width: 45%; font-size: 40px; font-family: Corbel; text-align: center; } </style></head><br><br><br><body> <img src=data:image/png;base64,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 /> <h3>Viel Spass!</h3> <p> <button id='easyButtonId' type='button' class='CUSTOM_BUTTON EASY_BUTTON'>leicht</button> <button id='mediumButtonId' type='button' class='CUSTOM_BUTTON MEDIUM_BUTTON'>mittel</button> <button id='hardButtonId' type='button' class='CUSTOM_BUTTON HARD_BUTTON'>schwierig</button> </p> <p class='LARGE_FONT'> <strong> <span id='number1Id'>-</span> <span id='operandId'>-</span> <span id='number2Id'>-</span> = </strong> </p> <p> <input id='solutionInputId' type='number' class='CUSTOM_INPUT' max='9999' min='0' step='1' /> <br/> <br/> <button id='userButtonId' type='button' class='CUSTOM_BUTTON USER_BUTTON'> <span id='userButtonContent'></span> </button> </p> <script> var Socket; var obj; var state = 'INIT'; var difficultyLevel; document.getElementById('userButtonId').addEventListener('click', processStateMachine); document.getElementById('easyButtonId').addEventListener('click', setEasyDifficulty); document.getElementById('mediumButtonId').addEventListener('click', setMediumDifficulty); document.getElementById('hardButtonId').addEventListener('click', setHardDifficulty); window.onload = function(event) { init(); }; function init() { Socket = new WebSocket('ws://' + window.location.hostname + ':81/'); Socket.onopen = function(event) { processStateMachine(); }; Socket.onmessage = function(event) { processMessage(event); }; } function processStateMachine() { if (state == 'INIT') { setEasyDifficulty(); getNewExcercise(); state = 'READY_FOR_SOLUTION' } else if (state == 'READY_FOR_NEW_EXERCISE') { getNewExcercise(); state = 'READY_FOR_SOLUTION' } else if (state == 'READY_FOR_SOLUTION') { checkResult(); showNewExerciseButton(); state = 'READY_FOR_NEW_EXERCISE' } } function getNewExcercise() { document.getElementById('userButtonId').innerHTML = '&#10148'; document.getElementById('solutionInputId').value = ''; document.getElementById('solutionInputId').style.color = 'black'; sendData('getNewExcercise', difficultyLevel); } function processMessage(event) { obj = JSON.parse(event.data); document.getElementById('number1Id').innerHTML = obj.number1; document.getElementById('number2Id').innerHTML = obj.number2; document.getElementById('operandId').innerHTML = obj.operand; document.getElementById('solutionInputId').removeAttribute('disabled', ''); console.log(obj.number1); console.log(obj.operand); console.log(obj.number2); } function checkResult() { document.getElementById('solutionInputId').setAttribute('disabled', ''); if (document.getElementById('solutionInputId').value == obj.solution) { sendData('result', 'correct'); document.getElementById('solutionInputId').style.color = 'green'; } else { sendData('result', 'wrong'); document.getElementById('solutionInputId').style.color = 'red'; } } function showNewExerciseButton() { document.getElementById('userButtonId').innerHTML = '&#x21bb'; } function sendData(key, value) { console.log(key); console.log(value); var message = { key: key, value: value }; Socket.send(JSON.stringify(message)); } function setEasyDifficulty() { difficultyLevel = 'easy'; document.getElementById('easyButtonId').style.background = '#0073e6'; document.getElementById('mediumButtonId').style.background = '#99ccff'; document.getElementById('hardButtonId').style.background = '#99ccff'; } function setMediumDifficulty() { difficultyLevel = 'medium'; document.getElementById('easyButtonId').style.background = '#99ccff'; document.getElementById('mediumButtonId').style.background = '#0073e6'; document.getElementById('hardButtonId').style.background = '#99ccff'; } function setHardDifficulty() { difficultyLevel = 'hard'; document.getElementById('easyButtonId').style.background = '#99ccff'; document.getElementById('mediumButtonId').style.background = '#99ccff'; document.getElementById('hardButtonId').style.background = '#0073e6'; } </script></body></html>";
-
+String webpage = "<!DOCTYPE html><html style='text-align: center;'><head> <title>Zukunftstag Helbling 2023</title> <style> body { font-family: Corbel; min-height: 100vh; margin: 0; } .LARGE_FONT { font-size: 40px; font-family: Corbel; } .CUSTOM_BUTTON { border: none; color: white; padding: 15px 15px; width: 15%; text-align: center; text-decoration: none; font-family: Corbel; display: inline-block; font-size: 16px; margin: 0px 0px; cursor: pointer; border-radius: 8px; } .USER_BUTTON { width: 20%; padding: 30px 20px; font-size: 40px; } .CUSTOM_INPUT { border-radius: 8px; border: 5px solid lightgray; width: 45%; font-size: 40px; font-family: Corbel; text-align: center; } </style></head><br><br><br><body> <img src=data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOUAAAA+CAIAAABbUkutAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAASdEVYdFNvZnR3YXJlAEdyZWVuc2hvdF5VCAUAAAaRSURBVHhe7Zy/i11FFMfzH/gX6F9g/gLTK6Y0jWm0jKC1sdLCH42FIlmwULYwhCxo4yZNCnGDQhp30yQQWBAJNluIQkBs1i97zpvMfM/M3Ln33d335u35cFjCPefOmzfzuXN/vKsXjh2nH9xXpyfcV6cn3FenJ9xXpyfcV6cn3FenJ9xXpyfcV6cn3FenJ9xXpyfc1/PFwydHl9/7IQ5NdMJsvl74/Gj20KYbeOHSV3Hs/fZUE2cO9SSEpiOo4NNvHmhiJNiRmpLINoiRoTJNdIL7OjPUkxCajqAC97UF93VmqCchNB1BBe5rC+7rzFBPQmg6ggrc1xbc11OhRQsqmOxroKXB3//8G9vj0EQnuK+nwtr62jub7+vDJ0e7e4efffvg5t3H9/dHe4wFCTtid4mtnQM0qLkyy/sauo1PRLf/+udfTZSpN7g86AN6IqOBvy3jQIQWZC4wtppoZpN9/fHnw4tXtin10mtfwwDZqw4aufT2LdpdAs1izrQuxzK+Yi5ttxFXP7hTn2Cqj321j11DaEWEzcKz61/uYejoI0YNJvpPuyPwEZgmqSl1UrLCxvr63Z1HtDGOdz65p3vmwPRgmGgXG7C5tMZM87Xlc/G9dH8DVca+2v6E0IoIyqJXpeNWYnAws6bGIS2UOintCJvp643b+7TFRul0OTg9cWCBySo7zdeWgwTx/hd72kQKlc3la0uvlh9MKHt+fbVnLhuo0Z1TSovBi6/m28R8YFZ05wUTfG3pc4hwDo2hmll8rewYBzpvBwEMrqxx4DikLRLa1gmb6avEK2/dwpzhBIq/+DdlEXbWsYVqsGNchivIN6/vUo1dXSb4GuLax/fwiTL9WLzRuD1UcIErjcRQTdwrtIYuIeyZRysi4iw6I/94+Y1tNIiO4e/r734fCkLYC5Ws69g3jCd6hb2yU4OQDiOkWNhYX+1JMwx9pYZudDC42WWDVgK7utip0kQEFSDgJU2PAGutstYPKrBHERjbMVn1MXSaW4DG4zIEDmPNLbAXEjhaNBeBobNTg9B0ymb6Cs80EYFxwSJRKYMWcRaKZGUVqKl4DQbTfKVGYmyD1g8qmMVXBNY/TaTQKktLPk5EcRZhOxywU4PQXMpm+lqaeFoXyVdaM+zqG0NN0Qo0oxYBug6x199xFjGXr9l2gF1iNXGCvfAoPUsRcLqgek2kbKavpaGpDzEtGLhXkN8IsoH72biY1J9Ri4CdUXocS9m5fMUumkipN0VDPXg00skNoYmUzfRVtxpG+Toqlve1cjEg2DbJJMqu1le6JKXxyRLXI3Rrivv6nGV8RWgrJ8yoRcC2SbtQdrW+0mC6rwktXxW4rzN2rN4UDfWgr/b+TBMpA75+9OuzbPz0x39asYBUmyW06QZavioY5evgCbrCBC3s8ynCXr/SZTpl18pXe3dIYLTjeoQmUgZ8JYFCfPjLM61YQAWzhDbdQMtXBXVfKVt/PlBnghb2GSdhf6fQxALKrtZX61/9+LePYDWR4r4+hyag9BujgOL4cQFNan0uBSpAVF6/srfP9gxLBav1FUNH2YtXtkvjaZtCaC7FfU2gp9alN48w7vRLGJ2ap/mafRUBYKN9a+Rsft9CTPMV2CUT38Iek1h35Vc0Ck2nuK8J9hrxqnnrFGqSPbBccwvGahGOE8zczbuPY2uzr8PaTwRUs3JfbYGEPNje2jnAX3schtBWUtxXJvuUAMN6+eTdYasOwl6ZjdXCdgyfWJnL7LUg1azcV0C/AlbCDrs2keK+MlhNS28MZSN7nzRWC9S3T23pzozK1sFXYK8KbMirGrRR909xXzNg7BqVLakzwVdsaZnaylMLqlwTX0H9UMRQyxUXbZd9Cfe1yI3b+/YtvhAY5dJEgrFahKbwofZNJQmcMSufCKh+fXwFMBJHI301jGG4a0RBnELIdmLAVwd3V5h4jDV0QWCpgFJ0BzY7UCF8KP7iE+n5Q7/g3IVvZ78Ovc8FlTWR4r46qwcS040sjlLNpbivzorByco+CSn9Ou2+OqeO/AS4u3d4f/9pHFs7B9n/IDH7dFlwX51Th3QcjNIdHhjwlV7LCmHfz6KCELbSOW+QjvUoXQkIA77SA6YQ7c+zbKVz3iAjS4HLgMrKKrivzqlDXlJA02sn/8sFra7ivjpnBNZOG5prxn11esJ9dXrCfXV6wn11esJ9dXpiwFfHWSvcV6cn3FenJ9xXpyfcV6cn3FenJ9xXpyfcV6cfjo//BwvbGSrmlTwhAAAAAElFTkSuQmCC /> <h3>Viel Spass!</h3> <p> <button id='easyButtonId' type='button' class='CUSTOM_BUTTON EASY_BUTTON'>leicht</button> <button id='mediumButtonId' type='button' class='CUSTOM_BUTTON MEDIUM_BUTTON'>mittel</button> <button id='hardButtonId' type='button' class='CUSTOM_BUTTON HARD_BUTTON'>schwierig</button> </p> <p class='LARGE_FONT'> <strong> <span id='number1Id'>-</span> <span id='operandId'>-</span> <span id='number2Id'>-</span> = </strong> </p> <p> <input id='solutionInputId' type='number' class='CUSTOM_INPUT' max='9999' min='0' step='1' /> <br/> <br/> <button id='userButtonId' type='button' class='CUSTOM_BUTTON USER_BUTTON'> <span id='userButtonContent'></span> </button> </p> <script> var Socket; var obj; var difficultyLevel; var brightColor = '#99ccff'; var darkColor = '#0073e6'; document.getElementById('userButtonId').addEventListener('click', processUserButtonClick); document.getElementById('easyButtonId').addEventListener('click', setEasyDifficulty); document.getElementById('mediumButtonId').addEventListener('click', setMediumDifficulty); document.getElementById('hardButtonId').addEventListener('click', setHardDifficulty); window.onload = function(event) { init(); }; function init() { Socket = new WebSocket('ws://' + window.location.hostname + ':81/'); Socket.onopen = function(event) { setEasyDifficulty(); getNewExcercise(); setUiToInputState(); }; Socket.onmessage = function(event) { processMessage(event); }; } function processUserButtonClick() { setUiToLoadingState(); checkResult(); setTimeout(() => { getNewExcercise(); setUiToInputState(); }, 2000); } function getNewExcercise() { sendData('getNewExcercise', difficultyLevel); } function processMessage(event) { obj = JSON.parse(event.data); document.getElementById('number1Id').innerHTML = obj.number1; document.getElementById('number2Id').innerHTML = obj.number2; document.getElementById('operandId').innerHTML = obj.operand; document.getElementById('solutionInputId').removeAttribute('disabled', ''); console.log(obj.number1); console.log(obj.operand); console.log(obj.number2); } function checkResult() { document.getElementById('solutionInputId').setAttribute('disabled', ''); if (document.getElementById('solutionInputId').value == obj.solution) { sendData('result', 'correct'); document.getElementById('solutionInputId').style.color = 'green'; document.getElementById('solutionInputId').style.background = '#F0FFF0'; } else { sendData('result', 'wrong'); document.getElementById('solutionInputId').style.color = 'red'; document.getElementById('solutionInputId').style.background = '#FFF0F0'; } } function setUiToInputState() { document.getElementById('userButtonId').innerHTML = '&#10148'; document.getElementById('solutionInputId').value = ''; document.getElementById('solutionInputId').style.color = 'black'; document.getElementById('solutionInputId').style.background = 'white'; document.getElementById('userButtonId').style.background = darkColor; document.getElementById('userButtonId').removeAttribute('disabled', ''); } function setUiToLoadingState() { document.getElementById('userButtonId').innerHTML = '&#x21bb'; document.getElementById('userButtonId').style.background = brightColor; document.getElementById('userButtonId').setAttribute('disabled', ''); } function sendData(key, value) { console.log(key); console.log(value); var message = { key: key, value: value }; Socket.send(JSON.stringify(message)); } function setEasyDifficulty() { if (difficultyLevel != 'easy') { difficultyLevel = 'easy'; document.getElementById('easyButtonId').style.background = darkColor; document.getElementById('mediumButtonId').style.background = brightColor; document.getElementById('hardButtonId').style.background = brightColor; getNewExcercise(); } } function setMediumDifficulty() { if (difficultyLevel != 'medium') { difficultyLevel = 'medium'; document.getElementById('easyButtonId').style.background = brightColor; document.getElementById('mediumButtonId').style.background = darkColor; document.getElementById('hardButtonId').style.background = brightColor; getNewExcercise(); } } function setHardDifficulty() { if (difficultyLevel != 'hard') { difficultyLevel = 'hard'; document.getElementById('easyButtonId').style.background = brightColor; document.getElementById('mediumButtonId').style.background = brightColor; document.getElementById('hardButtonId').style.background = darkColor; getNewExcercise(); } } </script></body></html>";
 
 void setup() {
   initEsp();
+  initRandomGenerator();
   initWiFi();
   initWebserver();
 }
 
 
-void loop() { 
+void loop() {
   server.handleClient();
   webSocket.loop();
 }
@@ -120,8 +134,6 @@ void loop() {
 void initEsp() {
   Serial.begin(115200);
   unsigned long currentMillis = millis();
-  randomSeed(analogRead(RandomSignalPin));
-
   pinMode(MotorPin, OUTPUT);
   pinMode(SwitchRightPin, INPUT_PULLUP);
   pinMode(SwitchLeftPin, INPUT_PULLUP);
@@ -130,9 +142,17 @@ void initEsp() {
 }
 
 
+void initRandomGenerator() {
+  unsigned long seed = 0;
+  for (int i = 0; i < 32; i++) {
+    seed = seed | ((analogRead(RandomSignalPin) & 0x01) << i);
+  }
+  randomSeed(seed);
+}
+
+
 void initWiFi() {
-  WiFi.softAP(Ssid, Password);
-  delay(100);
+  WiFi.softAP(Ssid, Password, IsSsidHidden, MaxConnections);
   IPAddress IP = WiFi.softAPIP();
   Serial.println("AP IP address: " + IP);
 }
@@ -217,14 +237,14 @@ void createWebContent() {
       break;
     case 2:
       operand = "*";
-      number1 = random(rangeMultiplication[difficultyLevel].min, rangeMultiplication[difficultyLevel].max);
-      number2 = random(rangeMultiplication[difficultyLevel].min, rangeMultiplication[difficultyLevel].max);
+      number1 = random(rangeMultiplicationNumber1[difficultyLevel].min, rangeMultiplicationNumber1[difficultyLevel].max);
+      number2 = random(rangeMultiplicationNumber2[difficultyLevel].min, rangeMultiplicationNumber2[difficultyLevel].max);
       solution = number1 * number2;
       break;
     case 3:
       operand = "/";
-      solution = random(rangeMultiplication[difficultyLevel].min, rangeMultiplication[difficultyLevel].max);
-      number2 = random(rangeMultiplication[difficultyLevel].min, rangeMultiplication[difficultyLevel].max);
+      solution = random(rangeMultiplicationNumber1[difficultyLevel].min, rangeMultiplicationNumber1[difficultyLevel].max);
+      number2 = random(rangeMultiplicationNumber2[difficultyLevel].min, rangeMultiplicationNumber2[difficultyLevel].max);
       number1 = solution * number2;
       break;
   }
@@ -269,7 +289,7 @@ void processWebContent() {
 void processResult(String result) {
   if (result == "correct") {
     setColor(LedColor::GREEN);
-    dispenseCandy(1);
+    dispenseCandy(numberCandyPerDifficultyLevel[difficultyLevel]);
   } else {
     setColor(LedColor::RED);
     delay(2000);
@@ -298,6 +318,7 @@ void dispenseCandy(uint8_t quantity) {
   }
   stopMotor();
 }
+
 
 void waitUntilCandyIsDispensed() {
   unsigned long startTime = millis();
