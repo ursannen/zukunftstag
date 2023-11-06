@@ -60,7 +60,7 @@ struct User {
   uint8_t id;
   uint16_t numberOfExercises = 0;
   uint16_t numberOfCorrects = 0;
-  uint16_t numberOfConnections = 0;
+  long timeStampOfLiveSignal = 0;
   bool operator==(const User& u) const {
     return id == u.id;
   }
@@ -119,7 +119,7 @@ std::map<DifficultyLevel, uint8_t> numberCandyPerDifficultyLevel{
 // Konfiguration des Antriebs
 const uint16_t Acceleration_BitsPerSecond = 2500;
 const uint8_t SpeedLevel = 255;
-const uint8_t MaxRuntimePerSingleDispense_s = 5;
+const uint8_t MaxRuntimePerSingleDispense_s = 3;
 
 
 // Konfiguration der Pins
@@ -146,14 +146,18 @@ const uint8_t WebServerPort = 80;
 const uint8_t WebSocketPort = 81;
 WebServer server(WebServerPort);
 WebSocketsServer webSocket = WebSocketsServer(WebSocketPort);
+const uint16_t MaxInresponsiveTime_ms = 7500 + 1000 * MaxRuntimePerSingleDispense_s;
+const long ResponsivityCheckInterval_ms = 500;
+long LastResponsivityCheck_ms = 0;
 
 
-// Konfiguration der Website
-const uint8_t MaxJsonDocumentSize = 250;
-StaticJsonDocument<MaxJsonDocumentSize> jsonDocument;
-String webpage = "<!DOCTYPE html><html style='text-align: center;'><head> <title>Zukunftstag Helbling 2023</title> <style> body { font-family: Corbel; min-height: 100vh; margin: 0; } .STATISTICS_TEXT { font-size: 30px; font-family: Corbel; } .DIFFICULTY_BUTTON { color: white; border: none; text-align: center; text-decoration: none; display: inline-block; cursor: pointer; font-family: Corbel; font-size: 30px; margin: 0px 0px; border-radius: 8px; width: 25%; padding: 40px 0px; } .EXERCISE_TEXT { font-size: 75px; font-family: Corbel; font-weight: bold; } .RESULT_INPUT { font-size: 75px; font-family: Corbel; font-weight: bold; border-radius: 8px; border: 5px solid lightgray; width: 75%; padding: 30px 0px; text-align: center; } .USER_BUTTON { color: white; border: none; text-align: center; text-decoration: none; display: inline-block; cursor: pointer; font-family: Corbel; font-size: 50px; margin: 0px 0px; border-radius: 8px; width: 50%; padding: 50px 0px; } </style></head><br><br><br><body> <img src=data:image/png;base64,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 /> <br><br> <p class='STATISTICS_TEXT'>Du hast <strong> <span id='numberOfCorrectsId'>0</span> von <span id='numberOfExercisesId'>0</span></strong> Aufgaben richtig gel&ouml;st.</p> <p> <button id='easyButtonId' type='button' class='DIFFICULTY_BUTTON'>leicht</button> <button id='mediumButtonId' type='button' class='DIFFICULTY_BUTTON'>mittel</button> <button id='hardButtonId' type='button' class='DIFFICULTY_BUTTON'>schwierig</button> </p> <p class='EXERCISE_TEXT'><span id='number1Id'>-</span> <span id='operandId'>-</span> <span id='number2Id'>-</span> = </p> <p> <input id='solutionInputId' type='number' class='RESULT_INPUT' max='9999' min='0' step='1' /> <br/> <br/> <button id='userButtonId' type='button' class='USER_BUTTON'> <span id='userButtonContent'></span> </button> </p> <script> var Socket; var difficultyLevel; var brightColor = '#99ccff'; var darkColor = '#0073e6'; document.getElementById('userButtonId').addEventListener('click', processUserButtonClick); document.getElementById('easyButtonId').addEventListener('click', setEasyDifficulty); document.getElementById('mediumButtonId').addEventListener('click', setMediumDifficulty); document.getElementById('hardButtonId').addEventListener('click', setHardDifficulty); window.onload = function(event) { init(); }; function init() { Socket = new WebSocket('ws://' + window.location.hostname + ':81/'); Socket.onopen = function(event) { showInputMask(); }; Socket.onmessage = function(event) { processMessage(event); }; } function processMessage(event) { obj = JSON.parse(event.data); if (obj.payloadId == 'setDifficultyLevel') { difficultyLevel = obj.param1; showDifficultyLevel(); } if (obj.payloadId == 'setExercise') { showInputMask(); showExercise(obj.param1, obj.param2, obj.param3); } if (obj.payloadId == 'setResultStatus') { showWaitingMask(); showResultStatus(obj.param1, obj.param2); } if (obj.payloadId == 'setStatistics') { showStatistics(obj.param1, obj.param2); } } function processUserButtonClick() { sendResult(); } function setEasyDifficulty() { if (difficultyLevel != 'easy') { difficultyLevel = 'easy'; sendDifficultyLevel(); } } function setMediumDifficulty() { if (difficultyLevel != 'medium') { difficultyLevel = 'medium'; sendDifficultyLevel(); } } function setHardDifficulty() { if (difficultyLevel != 'hard') { difficultyLevel = 'hard'; sendDifficultyLevel(); } } function sendDifficultyLevel() { sendPayload('setDifficultyLevel', difficultyLevel); } function sendResult() { result = document.getElementById('solutionInputId').value; sendPayload('processResult', result); } function sendPayload(payloadId, param1 = '', param2 = '', param3 = '', param4 = '') { var message = { payloadId: payloadId, param1: param1, param2: param2, param3: param3, param4: param4 }; Socket.send(JSON.stringify(message)); } function showStatistics(numberOfExercisesId, numberOfCorrects) { document.getElementById('numberOfExercisesId').innerHTML = numberOfExercisesId; document.getElementById('numberOfCorrectsId').innerHTML = numberOfCorrects; } function showDifficultyLevel() { if (difficultyLevel == 'easy') { document.getElementById('easyButtonId').style.background = darkColor; document.getElementById('mediumButtonId').style.background = brightColor; document.getElementById('hardButtonId').style.background = brightColor; } if (difficultyLevel == 'medium') { document.getElementById('easyButtonId').style.background = brightColor; document.getElementById('mediumButtonId').style.background = darkColor; document.getElementById('hardButtonId').style.background = brightColor; } if (difficultyLevel == 'hard') { document.getElementById('easyButtonId').style.background = brightColor; document.getElementById('mediumButtonId').style.background = brightColor; document.getElementById('hardButtonId').style.background = darkColor; } } function showExercise(operand, number1, number2) { document.getElementById('operandId').innerHTML = operand; document.getElementById('number1Id').innerHTML = number1; document.getElementById('number2Id').innerHTML = number2; document.getElementById('solutionInputId').removeAttribute('disabled', ''); } function showResultStatus(status, solution) { if (status == 'correct') { document.getElementById('solutionInputId').style.color = 'green'; document.getElementById('solutionInputId').style.background = '#F0FFF0'; } if (status == 'wrong') { document.getElementById('solutionInputId').style.color = 'red'; document.getElementById('solutionInputId').style.background = '#FFF0F0'; } if (status == 'tooLate') { document.getElementById('solutionInputId').value = solution; document.getElementById('solutionInputId').style.background = '#FFE5B4'; } document.getElementById('solutionInputId').setAttribute('disabled', ''); } function showInputMask() { document.getElementById('userButtonId').innerHTML = '&#10148'; document.getElementById('solutionInputId').value = ''; document.getElementById('solutionInputId').style.color = 'black'; document.getElementById('solutionInputId').style.background = 'white'; document.getElementById('userButtonId').style.background = darkColor; document.getElementById('userButtonId').removeAttribute('disabled', ''); } function showWaitingMask() { document.getElementById('userButtonId').innerHTML = '&#x21bb'; document.getElementById('userButtonId').style.background = brightColor; document.getElementById('userButtonId').setAttribute('disabled', ''); } </script></body></html>";
+// Konfiguration der Web-Applikation
+const uint8_t MaxJsonPayloadSize = 250;
+StaticJsonDocument<MaxJsonPayloadSize> jsonPayload;
+String webpage = "<!DOCTYPE html><html style='text-align: center;'><head> <title>Zukunftstag Helbling 2023</title> <style> body { font-family: Corbel; min-height: 100vh; margin: 0; } .STATISTICS_TEXT { font-size: 30px; font-family: Corbel; } .DIFFICULTY_BUTTON { color: white; border: none; text-align: center; text-decoration: none; display: inline-block; cursor: pointer; font-family: Corbel; font-size: 30px; margin: 0px 0px; border-radius: 8px; width: 25%; padding: 40px 0px; } .EXERCISE_TEXT { font-size: 75px; font-family: Corbel; font-weight: bold; } .RESULT_INPUT { font-size: 75px; font-family: Corbel; font-weight: bold; border-radius: 8px; border: 5px solid lightgray; width: 75%; padding: 30px 0px; text-align: center; } .USER_BUTTON { color: white; border: none; text-align: center; text-decoration: none; display: inline-block; cursor: pointer; font-family: Corbel; font-size: 50px; margin: 0px 0px; border-radius: 8px; width: 50%; padding: 50px 0px; } </style></head><br><br><br><body> <img src=data:image/png;base64,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 /> <br><br> <p class='STATISTICS_TEXT'>Du hast <strong> <span id='numberOfCorrectsId'>0</span> von <span id='numberOfExercisesId'>0</span></strong> Aufgaben richtig gel&ouml;st.</p> <p> <button id='easyButtonId' type='button' class='DIFFICULTY_BUTTON'>leicht</button> <button id='mediumButtonId' type='button' class='DIFFICULTY_BUTTON'>mittel</button> <button id='hardButtonId' type='button' class='DIFFICULTY_BUTTON'>schwierig</button> </p> <p class='EXERCISE_TEXT'><span id='number1Id'>-</span> <span id='operandId'>-</span> <span id='number2Id'>-</span> = </p> <p> <input id='solutionInputId' type='number' class='RESULT_INPUT' max='9999' min='0' step='1' /> <br/> <br/> <button id='userButtonId' type='button' class='USER_BUTTON'> <span id='userButtonContent'></span> </button> </p> <script> var Socket; var difficultyLevel; var brightColor = '#99ccff'; var darkColor = '#0073e6'; document.getElementById('userButtonId').addEventListener('click', processUserButtonClick); document.getElementById('easyButtonId').addEventListener('click', setEasyDifficulty); document.getElementById('mediumButtonId').addEventListener('click', setMediumDifficulty); document.getElementById('hardButtonId').addEventListener('click', setHardDifficulty); const intervalID = setInterval(sendLiveSignal, 100); window.onload = function(event) { init(); }; function init() { Socket = new WebSocket('ws://' + window.location.hostname + ':81/'); Socket.onopen = function(event) { showInputMask(); }; Socket.onmessage = function(event) { processMessage(event); }; } function processMessage(event) { obj = JSON.parse(event.data); if (obj.payloadId == 'setDifficultyLevel') { difficultyLevel = obj.param1; showDifficultyLevel(); } if (obj.payloadId == 'setExercise') { showInputMask(); showExercise(obj.param1, obj.param2, obj.param3); } if (obj.payloadId == 'setResultStatus') { showWaitingMask(); showResultStatus(obj.param1, obj.param2); } if (obj.payloadId == 'setStatistics') { showStatistics(obj.param1, obj.param2); } } function processUserButtonClick() { sendResult(); } function setEasyDifficulty() { if (difficultyLevel != 'easy') { difficultyLevel = 'easy'; sendDifficultyLevel(); } } function setMediumDifficulty() { if (difficultyLevel != 'medium') { difficultyLevel = 'medium'; sendDifficultyLevel(); } } function setHardDifficulty() { if (difficultyLevel != 'hard') { difficultyLevel = 'hard'; sendDifficultyLevel(); } } function sendLiveSignal() { sendPayload('liveSignal'); } function sendDifficultyLevel() { sendPayload('setDifficultyLevel', difficultyLevel); } function sendResult() { result = document.getElementById('solutionInputId').value; sendPayload('processResult', result); } function sendPayload(payloadId, param1 = '', param2 = '', param3 = '', param4 = '') { var message = { payloadId: payloadId, param1: param1, param2: param2, param3: param3, param4: param4 }; Socket.send(JSON.stringify(message)); } function showStatistics(numberOfExercisesId, numberOfCorrects) { document.getElementById('numberOfExercisesId').innerHTML = numberOfExercisesId; document.getElementById('numberOfCorrectsId').innerHTML = numberOfCorrects; } function showDifficultyLevel() { if (difficultyLevel == 'easy') { document.getElementById('easyButtonId').style.background = darkColor; document.getElementById('mediumButtonId').style.background = brightColor; document.getElementById('hardButtonId').style.background = brightColor; } if (difficultyLevel == 'medium') { document.getElementById('easyButtonId').style.background = brightColor; document.getElementById('mediumButtonId').style.background = darkColor; document.getElementById('hardButtonId').style.background = brightColor; } if (difficultyLevel == 'hard') { document.getElementById('easyButtonId').style.background = brightColor; document.getElementById('mediumButtonId').style.background = brightColor; document.getElementById('hardButtonId').style.background = darkColor; } } function showExercise(operand, number1, number2) { document.getElementById('operandId').innerHTML = operand; document.getElementById('number1Id').innerHTML = number1; document.getElementById('number2Id').innerHTML = number2; document.getElementById('solutionInputId').removeAttribute('disabled', ''); } function showResultStatus(status, solution) { if (status == 'correct') { document.getElementById('solutionInputId').style.color = 'green'; document.getElementById('solutionInputId').style.background = '#F0FFF0'; } if (status == 'wrong') { document.getElementById('solutionInputId').style.color = 'red'; document.getElementById('solutionInputId').style.background = '#FFF0F0'; } if (status == 'tooLate') { document.getElementById('solutionInputId').value = solution; document.getElementById('solutionInputId').style.background = '#FFE5B4'; } document.getElementById('solutionInputId').setAttribute('disabled', ''); } function showInputMask() { document.getElementById('userButtonId').innerHTML = '&#10148'; document.getElementById('solutionInputId').value = ''; document.getElementById('solutionInputId').style.color = 'black'; document.getElementById('solutionInputId').style.background = 'white'; document.getElementById('userButtonId').style.background = darkColor; document.getElementById('userButtonId').removeAttribute('disabled', ''); } function showWaitingMask() { document.getElementById('userButtonId').innerHTML = '&#x21bb'; document.getElementById('userButtonId').style.background = brightColor; document.getElementById('userButtonId').setAttribute('disabled', ''); } </script></body></html>";
 
 
+// Application
 void setup() {
   initEsp();
   initRandomGenerator();
@@ -166,6 +170,7 @@ void setup() {
 void loop() {
   server.handleClient();
   webSocket.loop();
+  checkResponsivity();
 }
 
 
@@ -212,53 +217,122 @@ void initExercise() {
 }
 
 
-void setColor(LedColor color) {
-  switch (color) {
-    case LedColor::NO:
-      rgbLed.setPixelColor(0, 0, 0, 0);
-    case LedColor::RED:
-      rgbLed.setPixelColor(0, 120, 0, 0);
-      break;
-    case LedColor::GREEN:
-      rgbLed.setPixelColor(0, 0, 120, 0);
-      break;
-    case LedColor::BLUE:
-      rgbLed.setPixelColor(0, 0, 0, 120);
-      break;
-    case LedColor::WHITE:
-      rgbLed.setPixelColor(0, 40, 40, 40);
-      break;
-  }
-  rgbLed.show();
-}
-
-
 void webSocketEvent(byte num, WStype_t type, uint8_t* payload, size_t length) {
-  User& currentUser = loadUser(num);
   switch (type) {
     case WStype_CONNECTED:
-      currentUser.numberOfConnections++;
-      sendDifficultyLevel();
-      sendExercise(currentUser, currentUser.numberOfConnections == 1);
+      Serial.println("User " + String(num) + " connected.");
+      handleConnection(num);
       break;
     case WStype_DISCONNECTED:
-      removeUser(currentUser);
+      Serial.println("User " + String(num) + " disconnected.");
+      handleDisconnection(num);
       break;
     case WStype_TEXT:
-      if (readPayload(payload)) {
-        processPayload(currentUser);
-      }
+      Serial.println("User " + String(num) + " sent payload.");
+      handlePayload(num, payload);
       break;
+  }
+  printUsers();
+}
+
+
+void handleConnection(uint8_t id) {
+  addUser(id);
+  sendDifficultyLevel();
+  User& currentUser = getUser(id);
+  sendExercise(currentUser, true);
+}
+
+
+void handleDisconnection(uint8_t id) {
+  removeUser(id);
+}
+
+
+void handlePayload(uint8_t id, uint8_t* payload) {
+  User& currentUser = getUser(id);
+  if (readPayload(payload)) {
+    String payloadId = jsonPayload["payloadId"];
+    if (payloadId == "liveSignal") {
+      currentUser.timeStampOfLiveSignal = millis();
+    }
+    if (payloadId == "setDifficultyLevel") {
+      setDifficultyLevel(jsonPayload["param1"]);
+      sendDifficultyLevel();
+      sendNewExercise(false);
+    }
+    if (payloadId == "processResult") {
+      processResult(currentUser, jsonPayload["param1"]);
+      sendStatistics();
+      sendNewExercise(true);
+    }
   }
 }
 
 
-User& loadUser(uint8_t id) {
-  if (isUserExisting(id) == false) {
-    addUser(id);
+bool readPayload(const uint8_t* payload) {
+  DeserializationError error = deserializeJson(jsonPayload, payload);
+  if (error) {
+    Serial.println("Deserialization failed");
+    return false;
+  } else {
+    return true;
   }
-  printUsers();
-  return getUser(id);
+}
+
+
+void writePayload(String payloadId, String param1 = "", String param2 = "", String param3 = "", String param4 = "") {
+  jsonPayload["payloadId"] = payloadId;
+  jsonPayload["param1"] = param1;
+  jsonPayload["param2"] = param2;
+  jsonPayload["param3"] = param3;
+  jsonPayload["param4"] = param4;
+}
+
+
+void checkResponsivity() {
+  long currentTime = millis();
+  if (currentTime - LastResponsivityCheck_ms > ResponsivityCheckInterval_ms) {
+    std::vector<uint8_t> inresponsiveUserIds;
+    for (auto& user : users) {
+      if (currentTime - user.timeStampOfLiveSignal > MaxInresponsiveTime_ms) {
+        inresponsiveUserIds.push_back(user.id);
+      }
+    }
+    for (auto& id : inresponsiveUserIds) {
+      webSocket.disconnect(id);
+      removeUser(id);
+    }
+    LastResponsivityCheck_ms = currentTime;
+  }
+}
+
+
+void addUser(uint8_t id) {
+  User user;
+  user.id = id;
+  users.push_back(user);
+}
+
+
+void removeUser(uint8_t id) {
+  if (isUserExisting(id)) {
+    users.erase(users.begin() + getUserVectorPos(id));
+  }
+}
+
+
+User& getUser(uint8_t id) {
+  return users.at(getUserVectorPos(id));
+}
+
+
+uint8_t getUserVectorPos(uint8_t id) {
+  uint8_t pos = 0;
+  while (users.at(pos).id != id) {
+    pos++;
+  }
+  return pos;
 }
 
 
@@ -273,68 +347,12 @@ bool isUserExisting(uint8_t id) {
 }
 
 
-void addUser(uint8_t id) {
-  User user;
-  user.id = id;
-  user.numberOfExercises = 0;
-  user.numberOfCorrects = 0;
-  users.push_back(user);
-}
-
-
-User& getUser(uint8_t id) {
-  uint8_t pos = 0;
-  while (users.at(pos).id != id) {
-    pos++;
-  }
-  return users.at(id);
-}
-
-
-void removeUser(User& user) {
-  std::remove(users.begin(), users.end(), user);
-}
-
-
 void printUsers() {
+  Serial.println("Registered Users: ");
   for (auto& user : users) {
     Serial.println(user.id);
   }
   Serial.println();
-}
-
-
-bool readPayload(const uint8_t* payload) {
-  DeserializationError error = deserializeJson(jsonDocument, payload);
-  if (error) {
-    Serial.println("Deserialization failed");
-    return false;
-  } else {
-    return true;
-  }
-}
-
-
-void writePayload(String payloadId, String param1 = "", String param2 = "", String param3 = "", String param4 = "") {
-  jsonDocument["payloadId"] = payloadId;
-  jsonDocument["param1"] = param1;
-  jsonDocument["param2"] = param2;
-  jsonDocument["param3"] = param3;
-  jsonDocument["param4"] = param4;
-}
-
-
-void processPayload(User& currentUser) {
-  String payloadId = jsonDocument["payloadId"];
-  if (payloadId == "setDifficultyLevel") {
-    setDifficultyLevel(jsonDocument["param1"]);
-    sendDifficultyLevel();
-    sendNewExercise(false);
-  }
-  if (payloadId == "processResult") {
-    processResult(currentUser, jsonDocument["param1"]);
-    sendNewExercise(true);
-  }
 }
 
 
@@ -374,6 +392,11 @@ void sendResultStatus(User& currentUser, bool isResultCorrect) {
   }
 }
 
+void sendPing() {
+  writePayload("ping");
+  sendPayloadToAllUsers();
+}
+
 
 void sendStatistics() {
   for (auto& user : users) {
@@ -388,7 +411,6 @@ void sendNewExercise(bool isIncrementExerciseCounter) {
   for (auto& user : users) {
     sendExercise(user, isIncrementExerciseCounter);
   }
-  sendStatistics();
 }
 
 
@@ -457,14 +479,14 @@ void sendDifficultyLevel() {
 
 void sendPayloadToAllUsers() {
   String jsonStringTx = "";
-  serializeJson(jsonDocument, jsonStringTx);
+  serializeJson(jsonPayload, jsonStringTx);
   webSocket.broadcastTXT(jsonStringTx);
 }
 
 
 void sendPayload(User& user) {
   String jsonStringTx = "";
-  serializeJson(jsonDocument, jsonStringTx);
+  serializeJson(jsonPayload, jsonStringTx);
   webSocket.sendTXT(user.id, jsonStringTx);
 }
 
@@ -527,4 +549,25 @@ bool getDebouncedPinState(const uint8_t pin) {
     newState = digitalRead(pin);
   } while (oldState != newState);
   return newState;
+}
+
+
+void setColor(LedColor color) {
+  switch (color) {
+    case LedColor::NO:
+      rgbLed.setPixelColor(0, 0, 0, 0);
+    case LedColor::RED:
+      rgbLed.setPixelColor(0, 120, 0, 0);
+      break;
+    case LedColor::GREEN:
+      rgbLed.setPixelColor(0, 0, 120, 0);
+      break;
+    case LedColor::BLUE:
+      rgbLed.setPixelColor(0, 0, 0, 120);
+      break;
+    case LedColor::WHITE:
+      rgbLed.setPixelColor(0, 40, 40, 40);
+      break;
+  }
+  rgbLed.show();
 }
