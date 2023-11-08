@@ -136,7 +136,7 @@ Adafruit_NeoPixel rgbLed = Adafruit_NeoPixel(NumberOfLeds, LedPin);
 
 
 // Konfiguration WiFi
-const char* Ssid = "Suessigkeitenautomat_Cafeteria";
+const char* Ssid = "Suessigkeitenautomat_Name";
 const char* Password = "";
 const bool IsSsidHidden = false;
 
@@ -217,6 +217,24 @@ void initExercise() {
 }
 
 
+void checkResponsivity() {
+  long currentTime = millis();
+  if (currentTime - LastResponsivityCheck_ms > ResponsivityCheckInterval_ms) {
+    std::vector<uint8_t> inresponsiveUserIds;
+    for (auto& user : users) {
+      if (currentTime - user.timeStampOfLiveSignal > MaxInresponsiveTime_ms) {
+        inresponsiveUserIds.push_back(user.id);
+      }
+    }
+    for (auto& id : inresponsiveUserIds) {
+      webSocket.disconnect(id);
+      removeUser(id);
+    }
+    LastResponsivityCheck_ms = currentTime;
+  }
+}
+
+
 void webSocketEvent(byte num, WStype_t type, uint8_t* payload, size_t length) {
   switch (type) {
     case WStype_CONNECTED:
@@ -287,24 +305,6 @@ void writePayload(String payloadId, String param1 = "", String param2 = "", Stri
   jsonPayload["param2"] = param2;
   jsonPayload["param3"] = param3;
   jsonPayload["param4"] = param4;
-}
-
-
-void checkResponsivity() {
-  long currentTime = millis();
-  if (currentTime - LastResponsivityCheck_ms > ResponsivityCheckInterval_ms) {
-    std::vector<uint8_t> inresponsiveUserIds;
-    for (auto& user : users) {
-      if (currentTime - user.timeStampOfLiveSignal > MaxInresponsiveTime_ms) {
-        inresponsiveUserIds.push_back(user.id);
-      }
-    }
-    for (auto& id : inresponsiveUserIds) {
-      webSocket.disconnect(id);
-      removeUser(id);
-    }
-    LastResponsivityCheck_ms = currentTime;
-  }
 }
 
 
@@ -392,11 +392,6 @@ void sendResultStatus(User& currentUser, bool isResultCorrect) {
   }
 }
 
-void sendPing() {
-  writePayload("ping");
-  sendPayloadToAllUsers();
-}
-
 
 void sendStatistics() {
   for (auto& user : users) {
@@ -420,6 +415,26 @@ void sendExercise(User& user, bool isIncrementExerciseCounter) {
   }
   writePayload("setExercise", String(operand), String(number1), String(number2));
   sendPayload(user);
+}
+
+
+void sendDifficultyLevel() {
+  writePayload("setDifficultyLevel", difficultyLevelIds[difficultyLevel]);
+  sendPayloadToAllUsers();
+}
+
+
+void sendPayloadToAllUsers() {
+  String jsonStringTx = "";
+  serializeJson(jsonPayload, jsonStringTx);
+  webSocket.broadcastTXT(jsonStringTx);
+}
+
+
+void sendPayload(User& user) {
+  String jsonStringTx = "";
+  serializeJson(jsonPayload, jsonStringTx);
+  webSocket.sendTXT(user.id, jsonStringTx);
 }
 
 
@@ -468,26 +483,6 @@ void setDifficultyLevel(String value) {
   if (value == difficultyLevelIds[DifficultyLevel::HARD]) {
     difficultyLevel = DifficultyLevel::HARD;
   }
-}
-
-
-void sendDifficultyLevel() {
-  writePayload("setDifficultyLevel", difficultyLevelIds[difficultyLevel]);
-  sendPayloadToAllUsers();
-}
-
-
-void sendPayloadToAllUsers() {
-  String jsonStringTx = "";
-  serializeJson(jsonPayload, jsonStringTx);
-  webSocket.broadcastTXT(jsonStringTx);
-}
-
-
-void sendPayload(User& user) {
-  String jsonStringTx = "";
-  serializeJson(jsonPayload, jsonStringTx);
-  webSocket.sendTXT(user.id, jsonStringTx);
 }
 
 
