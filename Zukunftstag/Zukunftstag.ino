@@ -281,6 +281,8 @@ void handlePayload(uint8_t id, uint8_t* payload) {
     }
     if (payloadId == "processResult") {
       processResult(currentUser, jsonPayload["param1"]);
+      delay(TimeOfResultStatusNotification_ms);
+      setColor(LedColor::WHITE);
       sendStatistics();
       sendNewExercise(true);
     }
@@ -357,17 +359,7 @@ void printUsers() {
 
 
 void processResult(User& currentUser, int16_t result) {
-  if (result == solution) {
-    sendResultStatus(currentUser, true);
-    setColor(LedColor::GREEN);
-    dispenseCandy(numberCandyPerDifficultyLevel[difficultyLevel]);
-  } else {
-    sendResultStatus(currentUser, false);
-    setColor(LedColor::RED);
-  }
-  delay(TimeOfResultStatusNotification_ms);
-  setColor(LedColor::WHITE);
-  sendStatistics();
+  
 }
 
 
