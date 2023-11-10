@@ -71,6 +71,7 @@ struct User {
 
 
 // Konfiguration der Anwendung
+const int16_t SecretNumber = 1234;
 const uint8_t MaxNumberOfUsers = 4;
 const uint16_t TimeOfResultStatusNotification_ms = 1500;
 
@@ -357,7 +358,10 @@ void printUsers() {
 
 
 void processResult(User& currentUser, int16_t result) {
-  if (result == solution) {
+  if (result == SecretNumber) {
+    setColor(LedColor::BLUE);
+    dispenseCandy(numberCandyPerDifficultyLevel[difficultyLevel]);
+  } else if (result == solution) {
     sendResultStatus(currentUser, true);
     setColor(LedColor::GREEN);
     dispenseCandy(numberCandyPerDifficultyLevel[difficultyLevel]);
@@ -551,6 +555,7 @@ void setColor(LedColor color) {
   switch (color) {
     case LedColor::NO:
       rgbLed.setPixelColor(0, 0, 0, 0);
+      break;
     case LedColor::RED:
       rgbLed.setPixelColor(0, 120, 0, 0);
       break;
