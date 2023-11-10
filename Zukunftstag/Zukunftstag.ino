@@ -71,6 +71,7 @@ struct User {
 
 
 // Konfiguration der Anwendung
+const int16_t SecretNumber = 1111;
 const uint8_t MaxNumberOfUsers = 4;
 const uint16_t TimeOfResultStatusNotification_ms = 1500;
 
@@ -281,8 +282,6 @@ void handlePayload(uint8_t id, uint8_t* payload) {
     }
     if (payloadId == "processResult") {
       processResult(currentUser, jsonPayload["param1"]);
-      delay(TimeOfResultStatusNotification_ms);
-      setColor(LedColor::WHITE);
       sendStatistics();
       sendNewExercise(true);
     }
@@ -359,7 +358,16 @@ void printUsers() {
 
 
 void processResult(User& currentUser, int16_t result) {
-  
+  if (result == solution || result == SecretNumber) {
+    sendResultStatus(currentUser, true);
+    setColor(LedColor::GREEN);
+    dispenseCandy(numberCandyPerDifficultyLevel[difficultyLevel]);
+  } else {
+    sendResultStatus(currentUser, false);
+    setColor(LedColor::RED);
+  }
+  delay(TimeOfResultStatusNotification_ms);
+  setColor(LedColor::WHITE);
 }
 
 
@@ -543,6 +551,7 @@ void setColor(LedColor color) {
   switch (color) {
     case LedColor::NO:
       rgbLed.setPixelColor(0, 0, 0, 0);
+      break;
     case LedColor::RED:
       rgbLed.setPixelColor(0, 120, 0, 0);
       break;
